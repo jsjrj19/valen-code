@@ -15,11 +15,11 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, expansion=4, growthRate=12, dropRate=0):
         super(Bottleneck, self).__init__()
         planes = expansion * growthRate
-        self.bn1 = nn.BatchNorm2d(inplanes)
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
+        self.bn1 = nn.BatchNorm2d(inplanes)#第一个批归一化层
+        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)#1*1卷积
+        self.bn2 = nn.BatchNorm2d(planes)#第二个批归一化层
         self.conv2 = nn.Conv2d(planes, growthRate, kernel_size=3, 
-                               padding=1, bias=False)
+                               padding=1, bias=False)#3*3卷积
         self.relu = nn.ReLU(inplace=True)
         self.dropRate = dropRate
 
@@ -37,7 +37,7 @@ class Bottleneck(nn.Module):
 
         return out
 
-
+#定义基础块模块
 class BasicBlock(nn.Module):
     def __init__(self, inplanes, expansion=1, growthRate=12, dropRate=0):
         super(BasicBlock, self).__init__()
@@ -59,7 +59,7 @@ class BasicBlock(nn.Module):
 
         return out
 
-
+#定义过渡层矩阵
 class Transition(nn.Module):
     def __init__(self, inplanes, outplanes):
         super(Transition, self).__init__()
@@ -75,7 +75,7 @@ class Transition(nn.Module):
         out = F.avg_pool2d(out, 2)
         return out
 
-
+#定义Densnet主网络
 class DenseNet(nn.Module):
 
     def __init__(self, depth=22, block=Bottleneck, 
@@ -111,7 +111,7 @@ class DenseNet(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
-
+    #构建密集块
     def _make_denseblock(self, block, blocks):
         layers = []
         for i in range(blocks):
@@ -120,7 +120,7 @@ class DenseNet(nn.Module):
             self.inplanes += self.growthRate
 
         return nn.Sequential(*layers)
-
+    #构建过渡层
     def _make_transition(self, compressionRate):
         inplanes = self.inplanes
         outplanes = int(math.floor(self.inplanes // compressionRate))
