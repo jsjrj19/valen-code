@@ -61,18 +61,19 @@ class InfoNCE(nn.Module):
 
 
 def info_nce(query, positive_key, negative_keys=None, temperature=0.1, reduction='mean', negative_mode='unpaired'):
-    # Check input dimensionality.
+    # Check input dimensionality.检查query的维度
     if query.dim() != 2:
         raise ValueError('<query> must have 2 dimensions.')
+    #检查positive_key的维度
     if positive_key.dim() != 2:
         raise ValueError('<positive_key> must have 2 dimensions.')
-    if negative_keys is not None:
+    if negative_keys is not None:#如果提供了negative_keys，检查其维度是否匹配
         if negative_mode == 'unpaired' and negative_keys.dim() != 2:
             raise ValueError("<negative_keys> must have 2 dimensions if <negative_mode> == 'unpaired'.")
         if negative_mode == 'paired' and negative_keys.dim() != 3:
             raise ValueError("<negative_keys> must have 3 dimensions if <negative_mode> == 'paired'.")
 
-    # Check matching number of samples.
+    # Check matching number of samples.检查样本数量是否一致
     if len(query) != len(positive_key):
         raise ValueError('<query> and <positive_key> must must have the same number of samples.')
     if negative_keys is not None:
@@ -97,7 +98,7 @@ def info_nce(query, positive_key, negative_keys=None, temperature=0.1, reduction
         if negative_mode == 'unpaired':
             # Cosine between all query-negative combinations
             negative_logits = query @ transpose(negative_keys)
-
+        #根据负样本模式计算负样本对数几率
         elif negative_mode == 'paired':
             query = query.unsqueeze(1)
             negative_logits = query @ transpose(negative_keys)
@@ -114,7 +115,7 @@ def info_nce(query, positive_key, negative_keys=None, temperature=0.1, reduction
 
         # Positive keys are the entries on the diagonal
         labels = torch.arange(len(query), device=query.device)
-
+    #计算交叉熵损失
     return F.cross_entropy(logits / temperature, labels, reduction=reduction)
 
 
