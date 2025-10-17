@@ -53,14 +53,15 @@ class cifar10(data.Dataset):
 
         if download:
             self.download()
-
+        #检查数据集完整性
         if not self._check_integrity():
             raise RuntimeError('Dataset not found or corrupted.' +
                                ' You can use download=True to download it')
-
+        #如果是训练集
         if self.train:
             self.train_data = []
             self.train_labels = []
+            #遍历训练集的所有批次文件
             for fentry in self.train_list:
                 f = fentry[0]
                 file = os.path.join(self.root, self.base_folder, f)
@@ -69,26 +70,34 @@ class cifar10(data.Dataset):
                 self.train_data.append(entry['data'])
                 self.train_labels += entry['labels']
                 fo.close()
-
+            #合并所有批次的数据
             self.train_data = np.concatenate(self.train_data) 
+            #重塑数据形状
             self.train_data = self.train_data.reshape((50000, 3, 32, 32))
+            #转置维度
             self.train_data = self.train_data.transpose((0, 2, 3, 1)) 
-
+            #转换为pytorch张量
             self.train_data = torch.from_numpy(self.train_data)
             self.train_labels = torch.tensor(self.train_labels, dtype=torch.long)
-            
+            #如果部分标签不为0，处理部分标签
             if partial_rate != 0.0:
-                y = binarize_class(self.train_labels) 
+                #标签二值化
+                y = binarize_class(self.train_labels)
+                #部分化标签
                 self.train_final_labels, self.average_class_label = partialize(y, self.train_labels, partial_type, partial_rate)    
 
             else:
+                #如果不使用部分标签，直接使用二值化标签
                 self.train_final_labels = binarize_class(self.train_labels).float()
+            #深拷贝标签分布，用于后续处理
             self.train_label_distribution = deepcopy(self.train_final_labels)
 
         else:
-            f = self.test_list[0][0]
-            file = os.path.join(self.root, self.base_folder, f)
-            fo = open(file, 'rb')
+            f = self.test_list[0][0]#获取测试集文件名
+            file = os.path.join(self.root, self.base_folder, f)#构建完整文件路径
+            fo = open(file, 'rb')#以二进制读模式打开文件
+
+            #根据python版本选择不同的加载方式
             if sys.version_info[0] == 2: 
                 entry = pickle.load(fo)
             else:
@@ -111,16 +120,17 @@ class cifar10(data.Dataset):
         Returns:
             tuple: (image, target) where target is index of the target class.
         """
+        #根据是训练集还是测试集获取对应的数据
         if self.train:
             img, target, true, distr = self.train_data[index], self.train_final_labels[index], self.train_labels[index], self.train_label_distribution[index]
         else:
             img, target, true, distr = self.test_data[index], self.test_labels[index], self.test_labels[index], self.test_labels[index]
-
+        #将张量转换为PIL图像
         img = Image.fromarray(img.numpy(), mode=None) 
-
+        #应用图像变换
         if self.transform is not None:
             img = self.transform(img)
-
+        #应用标签变换
         if self.target_transform is not None:
             target = self.target_transform(target)
 
@@ -128,6 +138,7 @@ class cifar10(data.Dataset):
 
 
     def __len__(self):
+        #返回数据集的长度
         if self.train:
             return len(self.train_data)
         else:
@@ -135,6 +146,7 @@ class cifar10(data.Dataset):
 
 
     def _check_integrity(self):
+        #检查数据集文件的完整性
         root = self.root
         for fentry in (self.train_list + self.test_list):
             filename, md5 = fentry[0], fentry[1]
@@ -150,17 +162,19 @@ class cifar10(data.Dataset):
         if self._check_integrity():
             return
 
+        #下载数据集文件
         download_url(self.url, self.root, self.filename, self.tgz_md5) 
 
-        cwd = os.getcwd() 
-        tar = tarfile.open(os.path.join(self.root, self.filename), "r:gz") 
-        os.chdir(self.root)
-        tar.extractall()
-        tar.close()
-        os.chdir(cwd)
+        cwd = os.getcwd()#保存当前工作目录 
+        tar = tarfile.open(os.path.join(self.root, self.filename), "r:gz")#打开下载的tar.gz文件
+        os.chdir(self.root)#切换到根目录
+        tar.extractall()#解压所有文件
+        tar.close()#关闭tar文件
+        os.chdir(cwd)#切换回原工作目录
 
 
     def __repr__(self):
+        #返回数据集的字符串表示
         fmt_str = 'Dataset ' + self.__class__.__name__ + '\n'
         fmt_str += '    Number of datapoints: {}\n'.format(self.__len__())
         tmp = 'train' if self.train is True else 'test'
